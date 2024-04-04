@@ -5,19 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-//import 'Controller/Controller.dart' as Controller;
+//import 'controller/controller.dart' as controller;
 
 class FigmaToFlutter {
   // var apiData;
   // late var node;
   //
   // FigmaToFlutter.getData({required String fileKey,required String id}){
-  //   return Controller.getData(fileKey, id);
-  //   // node = Controller.getData(fileKey, id);
+  //   return controller.getData(fileKey, id);
+  //   // node = controller.getData(fileKey, id);
   //   // print(node is Map);
   //   //
   //   // if(node != null){
-  //   //  var view =  Controller.test(node);
+  //   //  var view =  controller.test(node);
   //   // }
   // }
   static var baseWidth;
@@ -31,15 +31,13 @@ class FigmaToFlutter {
   /// fileKey와 id는 figma의 url에서 확인 할 수 있음.
   static Future<Widget> getData(
       {required String fileKey, required String id}) async {
-
     var data = await getDataFromController(fileKey, id);
 
-    return _buildWidgetFromData(data,null);
+    return _buildWidgetFromData(data, null);
   }
 
-
-
-  static Future<dynamic> getDataFromController(String fileKey, String id) async {
+  static Future<dynamic> getDataFromController(String fileKey,
+      String id) async {
     var nodesData;
     var document;
 
@@ -48,12 +46,10 @@ class FigmaToFlutter {
     http.Response response = await http.get(
         Uri.parse('https://api.figma.com/v1/files/$fileKey/nodes?ids=$id'),
         headers: {
-
         });
 
     // TODO: 통신 예외처리
     if (response.statusCode == 200) {
-
       var jsonData = json.decode(response.body);
       var nodesId = id.replaceAll('-', ':');
 
@@ -65,9 +61,6 @@ class FigmaToFlutter {
       throw Exception('Failed to load data');
     }
   }
-
-
-
 
   // static Widget _buildWidgetFromData(dynamic node) {
   //   var document = node;
@@ -113,133 +106,177 @@ class FigmaToFlutter {
 
   static Widget _buildWidgetFromData(dynamic node, dynamic parentNode) {
     if (node['type'] == 'CANVAS') {
-
       // TODO: 캔버스 말고 화면 클릭해야한다고 에러 표시
-      return _buildWidgetFromData(node,null);
-    } else if(node['type'] != 'CANVAS') {
-      return _buildFrameWidget(node, parentNode);
+      return _buildWidgetFromData(node, null);
     } else {
+      if (node['type'] == 'TEXT') {
+        return _buildTextWidget(node, parentNode);
+      } else {
+        return _buildFrameWidget(node, parentNode);
+      }
       return Container();
     }
   }
 
   static Widget _buildFrameWidget(dynamic node, dynamic parentNode) {
-
+    /// 자식 노드가 있을 때
     if (node['children'] != null && (node['children'] as List).isNotEmpty) {
       var children = node['children'] as List<dynamic>;
-      var width =  node['absoluteBoundingBox']['width'] ?? 0.0;
-      var height =  node['absoluteBoundingBox']['height'] ?? 0.0;
-      var x;
-      var y;
-      print('baseWidth $baseWidth');
 
-      // 밑바탕되는 요소의 넓이와 높이
-      // baseWidth = (baseWidth ?? node['absoluteBoundingBox']['width']/2).toDouble();
-      // baseHeight = (baseHeight ?? node['absoluteBoundingBox']['height']/2).toDouble();
-      baseWidth = (baseWidth ?? 0.0 - node['absoluteBoundingBox']['x']).toDouble();
-      baseHeight = (baseHeight ?? 0.0 - node['absoluteBoundingBox']['y']).toDouble();
+      /// size
+      Map<String, double> size = getSize(node);
 
-      print('baseWidth $baseWidth');
-      // var x = (baseWidth + node['absoluteBoundingBox']['x']).round().toDouble().clamp(0.0, baseWidth*2);
-      // var y = (baseHeight + node['absoluteBoundingBox']['y']).round().toDouble().clamp(0.0, baseHeight*2);
+      /// position
+      Map<String, double> xy = getPosition(node, parentNode);
 
+      /// color
+      Color color = getColor(node);
 
-        x = (node['absoluteBoundingBox']['x'] + baseWidth).toDouble();
-        y = (node['absoluteBoundingBox']['y'] + baseHeight).toDouble();
+      /// borderRadius
+      BorderRadius borderRadius = getBorderRadius(node);
 
-
-
-      print(x is double);
-      print(y is double);
-
-      print('x $x');
-      print('y $y');
-      print(node['absoluteBoundingBox']['y'] is double);
-
-      if(checkIsParent){
-
+      /// 맨 처음 요소인지 확인하기
+      if (checkIsParent) {
         checkIsParent = false;
         return Container(
           //key: GlobalKey(),
-          width: node['absoluteBoundingBox']['width'],
-          height: node['absoluteBoundingBox']['height'],
+          width: size['width'],
+          height: size['height'],
           //color: _getColor(node['background']),
-          color: node['type'] == 'FRAME' ? Colors.blue : Colors.red,
+          //color: node['type'] == 'FRAME' ? Colors.blue : Colors.red,
+            color: color,
+
           child: Stack(
-            children: children.map<Widget>((child) => _buildWidgetFromData(child,node))
+            children: children
+                .map<Widget>((child) => _buildWidgetFromData(child, node))
                 .toList(),
           ),
         );
-      }else{
-
+      } else {
         return Positioned(
-            top:y,
-            left:x,
-            child:Container(
+            top: xy['y'],
+            left: xy['x'],
+            child: Container(
               //key: GlobalKey(),
-              width: node['absoluteBoundingBox']['width'],
-              height: node['absoluteBoundingBox']['height'],
+              width: size['width'],
+              height: size['height'],
               //color: _getColor(node['background']),
-              color: node['type'] == 'FRAME' ? Colors.blue : Colors.red,
+              //color: node['type'] == 'FRAME' ? Colors.blue : Colors.red,
+              decoration: BoxDecoration(
+                  borderRadius: borderRadius,
+                  color: color
+              ),
               child: Stack(
-                children: children.map<Widget>((child) => _buildWidgetFromData(child,node))
+                children: children
+                    .map<Widget>((child) => _buildWidgetFromData(child, node))
                     .toList(),
               ),
             ));
       }
 
-
+      /// 자식 노드가 없을 때
     } else if (node['children'] == null || (node['children'] as List).isEmpty) {
-      // baseWidth ??= node['absoluteBoundingBox']['width']/2;
-      // baseHeight ??= node['absoluteBoundingBox']['height']/2;
-      //
-      // var x = baseWidth + node['absoluteBoundingBox']['x'];
-      // var y = baseHeight + node['absoluteBoundingBox']['y'];
-      //
-      // print('x $x');
-      // print('y $y');
 
-      baseWidth = (baseWidth ?? 0.0 - node['absoluteBoundingBox']['x']).toDouble();
-      baseHeight = (baseHeight ?? 0.0 - node['absoluteBoundingBox']['y']).toDouble();
+      /// size
+      Map<String, double> size = getSize(node);
 
-      var parentX;
-      var parentY;
-      var x = (node['absoluteBoundingBox']['x'] + baseWidth).toDouble();
-      var y = (node['absoluteBoundingBox']['y'] + baseHeight).toDouble();
-      print('x $x');
-      print('y $y');
+      /// position
+      Map<String, double> xy = getPosition(node, parentNode);
 
+      /// color
+      Color color = getColor(node);
 
-      if(parentNode != null){
-        parentX =  (parentNode['absoluteBoundingBox']['x'] + baseWidth).toDouble();
-        parentY = (parentNode['absoluteBoundingBox']['y'] + baseHeight).toDouble();
-        x = parentX - x;
-        y = parentY - y;
-      }
+      /// borderRadius
+      BorderRadius borderRadius = getBorderRadius(node);
 
       return Positioned(
-        top:y,
-        left:x,
-        child: Container(
-          //key: GlobalKey(),
-        width: node['absoluteBoundingBox']['width'],
-        height: node['absoluteBoundingBox']['height'],
-        color:node['type'] == 'RECTANGLE' ? Colors.blue : Colors.red
-      ),
+          top: xy['y'],
+          left: xy['x'],
+          child: Container(
+            //key: GlobalKey(),
+            width: size['width'],
+            height: size['height'],
+            //color: node['type'] == 'RECTANGLE' ? Colors.blue : Colors.red),
+            decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                color: color
+            ),
+          )
       );
     } else {
       return Container();
     }
   }
 
-  static Color _getColor(dynamic background) {
-    if (background == null) return Colors.transparent;
-    var color = background[0]['color'];
+  //Type : Text
+  static _buildTextWidget(dynamic node, dynamic parentNode) {
+    /// position
+    Map<String, double> xy = getPosition(node, parentNode);
+    var TypeStyle = node['style'];
+
+    /// Text
+    var contentText = node['characters'] ?? '';
+    return Positioned(
+      top: xy['y'],
+      left: xy['x'],
+      child: Text(
+          contentText,
+          style: TextStyle(
+            fontSize: TypeStyle['fontSize'] ?? 12.0,
+            fontFamily: TypeStyle['fontFamily'] ?? 'Monospace',
+            //fontWeight: TypeStyle['fontWeight'] ?? FontWeight.normal,
+
+          )),
+    );
+  }
+
+  // 사이즈 구하기
+  static Map<String, double> getSize(dynamic node) {
+    double width, height;
+
+    width = node['absoluteBoundingBox']['width'] ?? 0.0;
+    height = node['absoluteBoundingBox']['height'] ?? 0.0;
+
+    return {'width': width, 'height': height};
+  }
+
+  // 위치 x, y 구하기
+  static Map<String, double> getPosition(dynamic node, dynamic parentNode) {
+    double x, y;
+
+    if (parentNode != null) {
+      x = (node['absoluteBoundingBox']['x'] -
+          parentNode['absoluteBoundingBox']['x']).abs();
+      y = (node['absoluteBoundingBox']['y'] -
+          parentNode['absoluteBoundingBox']['y']).abs();
+    } else {
+      x = (0.0 - node['absoluteBoundingBox']['x']).abs();
+      y = (0.0 - node['absoluteBoundingBox']['y']).abs();
+    }
+
+    return {'x': x, 'y': y};
+  }
+
+  // 컬러 구하기
+  static Color getColor(dynamic node) {
+    var fills = node['fills'];
+    if (fills == null) return Colors.transparent;
+    var color = fills[0]['color'];
     return Color.fromRGBO(
       (color['r'] * 255).toInt(),
       (color['g'] * 255).toInt(),
       (color['b'] * 255).toInt(),
       1.0,
     );
+  }
+  // borderRadius
+  static BorderRadius getBorderRadius(dynamic node) {
+      var borderRadius = node['cornerRadius'] ?? 0.0;
+
+      BorderRadius borderradius =  BorderRadius.all(
+        Radius.circular(borderRadius)
+      );
+
+      return borderradius;
   }
 }
