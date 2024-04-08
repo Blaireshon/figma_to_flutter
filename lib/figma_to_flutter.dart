@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'Style.dart';
+import 'StyleParser.dart';
+
 //import 'controller/controller.dart' as controller;
 
 class FigmaToFlutter {
@@ -31,6 +34,7 @@ class FigmaToFlutter {
   /// fileKey와 id는 figma의 url에서 확인 할 수 있음.
   static Future<Widget> getData(
       {required String fileKey, required String id}) async {
+
     var data = await getDataFromController(fileKey, id);
 
     return _buildWidgetFromData(data, null);
@@ -46,6 +50,7 @@ class FigmaToFlutter {
     http.Response response = await http.get(
         Uri.parse('https://api.figma.com/v1/files/$fileKey/nodes?ids=$id'),
         headers: {
+
         });
 
     // TODO: 통신 예외처리
@@ -105,11 +110,14 @@ class FigmaToFlutter {
   // }
 
   static Widget _buildWidgetFromData(dynamic node, dynamic parentNode) {
+
     if (node['type'] == 'CANVAS') {
       // TODO: 캔버스 말고 화면 클릭해야한다고 에러 표시
+
       return _buildWidgetFromData(node, null);
     } else {
       if (node['type'] == 'TEXT') {
+
         return _buildTextWidget(node, parentNode);
       } else {
         return _buildFrameWidget(node, parentNode);
@@ -122,29 +130,25 @@ class FigmaToFlutter {
     /// 자식 노드가 있을 때
     if (node['children'] != null && (node['children'] as List).isNotEmpty) {
       var children = node['children'] as List<dynamic>;
+      Style style = styleParser(node,parentNode);
 
-      /// size
-      Map<String, double> size = getSize(node);
+      // /// size
+      // Map<String, double> size = getSize(node);
+      //
+      // /// position
+      // Map<String, double> xy = getPosition(node, parentNode);
 
-      /// position
-      Map<String, double> xy = getPosition(node, parentNode);
-
-      /// color
-      Color color = getColor(node);
-
-      /// borderRadius
-      BorderRadius borderRadius = getBorderRadius(node);
+      // /// borderRadius
+      // BorderRadius borderRadius = getBorderRadius(node);
 
       /// 맨 처음 요소인지 확인하기
       if (checkIsParent) {
         checkIsParent = false;
         return Container(
           //key: GlobalKey(),
-          width: size['width'],
-          height: size['height'],
-          //color: _getColor(node['background']),
-          //color: node['type'] == 'FRAME' ? Colors.blue : Colors.red,
-            color: color,
+          width: style.width,
+          height: style.height,
+          color: style.color,
 
           child: Stack(
             children: children
@@ -154,17 +158,16 @@ class FigmaToFlutter {
         );
       } else {
         return Positioned(
-            top: xy['y'],
-            left: xy['x'],
+            top: style.positionedY,
+            left: style.positionedX,
             child: Container(
               //key: GlobalKey(),
-              width: size['width'],
-              height: size['height'],
-              //color: _getColor(node['background']),
-              //color: node['type'] == 'FRAME' ? Colors.blue : Colors.red,
+              width: style.width,
+              height: style.height,
               decoration: BoxDecoration(
-                  borderRadius: borderRadius,
-                  color: color
+                  borderRadius: style.borderRadius,
+                border: style.border,
+                color: style.color,
               ),
               child: Stack(
                 children: children
@@ -176,30 +179,29 @@ class FigmaToFlutter {
 
       /// 자식 노드가 없을 때
     } else if (node['children'] == null || (node['children'] as List).isEmpty) {
+      Style style = styleParser(node,parentNode);
 
-      /// size
-      Map<String, double> size = getSize(node);
+      // /// size
+      // Map<String, double> size = getSize(node);
+      //
+      // /// position
+      // Map<String, double> xy = getPosition(node, parentNode);
 
-      /// position
-      Map<String, double> xy = getPosition(node, parentNode);
 
-      /// color
-      Color color = getColor(node);
-
-      /// borderRadius
-      BorderRadius borderRadius = getBorderRadius(node);
+      // /// borderRadius
+      // BorderRadius borderRadius = getBorderRadius(node);
 
       return Positioned(
-          top: xy['y'],
-          left: xy['x'],
+          top: style.positionedY,
+          left: style.positionedX,
           child: Container(
             //key: GlobalKey(),
-            width: size['width'],
-            height: size['height'],
-            //color: node['type'] == 'RECTANGLE' ? Colors.blue : Colors.red),
+            width: style.width,
+            height: style.height,
             decoration: BoxDecoration(
-                borderRadius: borderRadius,
-                color: color
+               borderRadius: style.borderRadius,
+                border: style.border,
+                color: style.color,
             ),
           )
       );
@@ -210,73 +212,38 @@ class FigmaToFlutter {
 
   //Type : Text
   static _buildTextWidget(dynamic node, dynamic parentNode) {
-    /// position
-    Map<String, double> xy = getPosition(node, parentNode);
+    Style style = styleParser(node,parentNode);
+
+    // /// position
+    // Map<String, double> xy = getPosition(node, parentNode);
     var TypeStyle = node['style'];
 
     /// Text
     var contentText = node['characters'] ?? '';
     return Positioned(
-      top: xy['y'],
-      left: xy['x'],
-      child: Text(
+      top: style.positionedY,
+      left: style.positionedX,
+      child: Container(
+        width:style.width,
+          height: style.height,
+
+      child:Align(
+        alignment: style.alignment ?? Alignment.topLeft,
+          child: Text(
           contentText,
+          overflow: style.textOverFlow,
+          maxLines: style.maxLines,
+
           style: TextStyle(
-            fontSize: TypeStyle['fontSize'] ?? 12.0,
-            fontFamily: TypeStyle['fontFamily'] ?? 'Monospace',
-            //fontWeight: TypeStyle['fontWeight'] ?? FontWeight.normal,
+            fontSize: style.fontSize ?? 12.0,
+            fontFamily: style.fontFamily ?? 'Roboto',
+            fontWeight: style.fontWeight ?? FontWeight.normal,
+            height: style.lineHeight
 
-          )),
+          ))
+      )
+
+      ),
     );
-  }
-
-  // 사이즈 구하기
-  static Map<String, double> getSize(dynamic node) {
-    double width, height;
-
-    width = node['absoluteBoundingBox']['width'] ?? 0.0;
-    height = node['absoluteBoundingBox']['height'] ?? 0.0;
-
-    return {'width': width, 'height': height};
-  }
-
-  // 위치 x, y 구하기
-  static Map<String, double> getPosition(dynamic node, dynamic parentNode) {
-    double x, y;
-
-    if (parentNode != null) {
-      x = (node['absoluteBoundingBox']['x'] -
-          parentNode['absoluteBoundingBox']['x']).abs();
-      y = (node['absoluteBoundingBox']['y'] -
-          parentNode['absoluteBoundingBox']['y']).abs();
-    } else {
-      x = (0.0 - node['absoluteBoundingBox']['x']).abs();
-      y = (0.0 - node['absoluteBoundingBox']['y']).abs();
-    }
-
-    return {'x': x, 'y': y};
-  }
-
-  // 컬러 구하기
-  static Color getColor(dynamic node) {
-    var fills = node['fills'];
-    if (fills == null) return Colors.transparent;
-    var color = fills[0]['color'];
-    return Color.fromRGBO(
-      (color['r'] * 255).toInt(),
-      (color['g'] * 255).toInt(),
-      (color['b'] * 255).toInt(),
-      1.0,
-    );
-  }
-  // borderRadius
-  static BorderRadius getBorderRadius(dynamic node) {
-      var borderRadius = node['cornerRadius'] ?? 0.0;
-
-      BorderRadius borderradius =  BorderRadius.all(
-        Radius.circular(borderRadius)
-      );
-
-      return borderradius;
   }
 }
