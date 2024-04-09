@@ -18,6 +18,8 @@ class Style{
   double? positionedY;
   BorderRadius? borderRadius;
   Border? border;
+  EdgeInsets? padding;
+  double? itemSpacing;
 
   Style({
     this.color,
@@ -34,6 +36,8 @@ class Style{
     this.positionedY,
     this.borderRadius,
     this.border,
+    this.padding,
+    this.itemSpacing,
 });
 
 }

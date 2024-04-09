@@ -11,20 +11,6 @@ import 'StyleParser.dart';
 //import 'controller/controller.dart' as controller;
 
 class FigmaToFlutter {
-  // var apiData;
-  // late var node;
-  //
-  // FigmaToFlutter.getData({required String fileKey,required String id}){
-  //   return controller.getData(fileKey, id);
-  //   // node = controller.getData(fileKey, id);
-  //   // print(node is Map);
-  //   //
-  //   // if(node != null){
-  //   //  var view =  controller.test(node);
-  //   // }
-  // }
-  static var baseWidth;
-  static var baseHeight;
   static var checkIsParent = true;
 
   /// RestApi 요청 후 위젯 반환
@@ -34,7 +20,6 @@ class FigmaToFlutter {
   /// fileKey와 id는 figma의 url에서 확인 할 수 있음.
   static Future<Widget> getData(
       {required String fileKey, required String id}) async {
-
     var data = await getDataFromController(fileKey, id);
 
     return _buildWidgetFromData(data, null);
@@ -110,36 +95,33 @@ class FigmaToFlutter {
   // }
 
   static Widget _buildWidgetFromData(dynamic node, dynamic parentNode) {
-
     if (node['type'] == 'CANVAS') {
       // TODO: 캔버스 말고 화면 클릭해야한다고 에러 표시
 
       return _buildWidgetFromData(node, null);
     } else {
       if (node['type'] == 'TEXT') {
-
         return _buildTextWidget(node, parentNode);
-      } else {
+      }
+
+      else if (node['layoutMode'] != null && node['layoutMode'] == 'HORIZONTAL') {
+        print('HORIZONTAL!!!!!');
+
+        return _buildRowWidget(node, parentNode);
+      }
+
+    else {
         return _buildFrameWidget(node, parentNode);
       }
       return Container();
     }
   }
 
-  static Widget _buildFrameWidget(dynamic node, dynamic parentNode) {
+  static _buildFrameWidget(dynamic node, dynamic parentNode) {
     /// 자식 노드가 있을 때
     if (node['children'] != null && (node['children'] as List).isNotEmpty) {
       var children = node['children'] as List<dynamic>;
-      Style style = styleParser(node,parentNode);
-
-      // /// size
-      // Map<String, double> size = getSize(node);
-      //
-      // /// position
-      // Map<String, double> xy = getPosition(node, parentNode);
-
-      // /// borderRadius
-      // BorderRadius borderRadius = getBorderRadius(node);
+      Style style = styleParser(node, parentNode);
 
       /// 맨 처음 요소인지 확인하기
       if (checkIsParent) {
@@ -149,12 +131,14 @@ class FigmaToFlutter {
           width: style.width,
           height: style.height,
           color: style.color,
+          padding: const EdgeInsets.all(0.0),
 
-          child: Stack(
-            children: children
-                .map<Widget>((child) => _buildWidgetFromData(child, node))
-                .toList(),
-          ),
+            child: Stack(
+              children: children
+                  .map<Widget>((child) => _buildWidgetFromData(child, node))
+                  .toList(),
+            ),
+
         );
       } else {
         return Positioned(
@@ -164,32 +148,25 @@ class FigmaToFlutter {
               //key: GlobalKey(),
               width: style.width,
               height: style.height,
+              padding: const EdgeInsets.all(0.0),
               decoration: BoxDecoration(
-                  borderRadius: style.borderRadius,
+                borderRadius: style.borderRadius,
                 border: style.border,
                 color: style.color,
               ),
-              child: Stack(
-                children: children
-                    .map<Widget>((child) => _buildWidgetFromData(child, node))
-                    .toList(),
-              ),
+
+                child: Stack(
+                  children: children
+                      .map<Widget>((child) => _buildWidgetFromData(child, node))
+                      .toList(),
+                ),
+
             ));
       }
 
       /// 자식 노드가 없을 때
     } else if (node['children'] == null || (node['children'] as List).isEmpty) {
-      Style style = styleParser(node,parentNode);
-
-      // /// size
-      // Map<String, double> size = getSize(node);
-      //
-      // /// position
-      // Map<String, double> xy = getPosition(node, parentNode);
-
-
-      // /// borderRadius
-      // BorderRadius borderRadius = getBorderRadius(node);
+      Style style = styleParser(node, parentNode);
 
       return Positioned(
           top: style.positionedY,
@@ -199,9 +176,9 @@ class FigmaToFlutter {
             width: style.width,
             height: style.height,
             decoration: BoxDecoration(
-               borderRadius: style.borderRadius,
-                border: style.border,
-                color: style.color,
+              borderRadius: style.borderRadius,
+              border: style.border,
+              color: style.color,
             ),
           )
       );
@@ -210,40 +187,103 @@ class FigmaToFlutter {
     }
   }
 
+
+  static _buildRowWidget(dynamic node, dynamic parentNode) {
+
+    /// 자식 노드가 있을 때
+    if (node['children'] != null && (node['children'] as List).isNotEmpty) {
+      var children = node['children'] as List<dynamic>;
+      Style style = styleParser(node, parentNode);
+      print('horizontal2222!!!!!');
+
+      return Positioned(
+        top: style.positionedY,
+        left: style.positionedX,
+        child:Expanded( child:Container(
+              //key: GlobalKey(),
+              width: style.width,
+              height: style.height,
+          padding: style.padding ?? EdgeInsets.zero,
+              decoration: BoxDecoration(
+                borderRadius: style.borderRadius,
+                border: style.border,
+                color: style.color,
+              ),
+
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  // children: children
+                  //     .map<Widget>((child) => _buildWidgetFromData(child, node),)
+                  //     .toList(),
+                  children: List.generate(children.length * 2 - 1, (index) {
+                    if (index.isEven) {
+                      // 짝수 인덱스일 때는 원래의 자식 위젯을 반환
+                      return _buildWidgetFromData(children[index ~/ 2], node);
+                    } else {
+                      // 홀수 인덱스일 때는 SizedBox를 반환
+                      return SizedBox(width: style.itemSpacing);
+                    }
+                  }),
+                ),
+
+            ),
+        )
+      );
+
+      /// 자식 노드가 없을 때
+    } else if (node['children'] == null || (node['children'] as List).isEmpty) {
+      Style style = styleParser(node, parentNode);
+
+      return Positioned(
+          top: style.positionedY,
+          left: style.positionedX,
+          child:Container(
+            //key: GlobalKey(),
+            width: style.width,
+            height: style.height,
+            decoration: BoxDecoration(
+              borderRadius: style.borderRadius,
+              border: style.border,
+              color: style.color,
+            ),
+          ))
+      ;
+    } else {
+      return Container();
+    }
+  }
+
   //Type : Text
   static _buildTextWidget(dynamic node, dynamic parentNode) {
-    Style style = styleParser(node,parentNode);
+    Style style = styleParser(node, parentNode);
 
-    // /// position
-    // Map<String, double> xy = getPosition(node, parentNode);
     var TypeStyle = node['style'];
 
     /// Text
     var contentText = node['characters'] ?? '';
-    return Positioned(
-      top: style.positionedY,
-      left: style.positionedX,
-      child: Container(
-        width:style.width,
+    return  Container(
+          width: style.width,
           height: style.height,
 
-      child:Align(
-        alignment: style.alignment ?? Alignment.topLeft,
-          child: Text(
-          contentText,
-          overflow: style.textOverFlow,
-          maxLines: style.maxLines,
+          child: Align(
+              alignment: style.alignment ?? Alignment.topLeft,
+              child: Text(
+                  contentText,
+                  overflow: style.textOverFlow,
+                  maxLines: style.maxLines,
+                textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: style.fontSize ?? 12.0,
+                      fontFamily: style.fontFamily ?? 'Roboto',
+                      fontWeight: style.fontWeight ?? FontWeight.normal,
+                      height: style.lineHeight
 
-          style: TextStyle(
-            fontSize: style.fontSize ?? 12.0,
-            fontFamily: style.fontFamily ?? 'Roboto',
-            fontWeight: style.fontWeight ?? FontWeight.normal,
-            height: style.lineHeight
+                  ))
+          )
 
-          ))
-      )
+      );
 
-      ),
-    );
   }
 }

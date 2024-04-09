@@ -26,7 +26,7 @@ Style styleParser(dynamic node, dynamic parentNode) {
 
         //fontFamily
         case 'style':
-          print('style');
+          //print('style');
           MappingStyle.getTypeStyle(value, style);
 
           break;
@@ -70,6 +70,25 @@ Style styleParser(dynamic node, dynamic parentNode) {
           }
 
           break;
+        case 'paddingLeft'||'paddingRight'||'paddingTop'||'paddingBottom':
+          double left = MappingStyle.getDouble(node['paddingLeft']) ?? 0.0;
+          double right = MappingStyle.getDouble(node['paddingRight']) ?? 0.0;
+          double top = MappingStyle.getDouble(node['paddingTop']) ?? 0.0;
+          double bottom = MappingStyle.getDouble(node['paddingBottom']) ?? 0.0;
+
+          style.padding = MappingStyle.getPadding(left, right, top, bottom);
+
+          break;
+
+        case 'layoutMode':
+          // HORIZONTAL : row
+        // VERTICAL : column
+          break;
+        case'itemSpacing':
+          double itemSpacing = MappingStyle.getDouble(node['itemSpacing']) ?? 0.0;
+          style.itemSpacing = itemSpacing;
+          // sizedbox(width:20)
+          break;
       }
     }
   });
@@ -80,6 +99,11 @@ class MappingStyle {
   static int? getInt(dynamic value){
     int? intValue = int.parse(value.toString());
     return intValue;
+  }
+
+  static double? getDouble(dynamic value){
+    double? doubleValue = double.parse(value.toString());
+    return doubleValue;
   }
 
   static Color getColor(dynamic fillsColor) {
@@ -187,6 +211,15 @@ class MappingStyle {
     }
 
     return Border.all(width: width, color: color);
+  }
+
+  static EdgeInsets getPadding(double paddingLeft, double paddingRight, double paddingTop, double paddingBottom){
+    double left = paddingLeft;
+    double right = paddingRight;
+    double top = paddingTop;
+    double bottom = paddingBottom;
+
+    return EdgeInsets.fromLTRB(left, top, right, bottom);
   }
 
   static void getTypeStyle(dynamic typeStyle, Style style) {
