@@ -71,10 +71,10 @@ Style styleParser(dynamic node, dynamic parentNode) {
 
           break;
         case 'paddingLeft'||'paddingRight'||'paddingTop'||'paddingBottom':
-          double left = MappingStyle.getDouble(node['paddingLeft']) ?? 0.0;
-          double right = MappingStyle.getDouble(node['paddingRight']) ?? 0.0;
-          double top = MappingStyle.getDouble(node['paddingTop']) ?? 0.0;
-          double bottom = MappingStyle.getDouble(node['paddingBottom']) ?? 0.0;
+          double left = MappingStyle.getDouble(node['paddingLeft'] ?? 0.0);
+          double right = MappingStyle.getDouble(node['paddingRight'] ?? 0.0);
+          double top = MappingStyle.getDouble(node['paddingTop'] ?? 0.0);
+          double bottom = MappingStyle.getDouble(node['paddingBottom'] ?? 0.0);
 
           style.padding = MappingStyle.getPadding(left, right, top, bottom);
 
@@ -101,8 +101,8 @@ class MappingStyle {
     return intValue;
   }
 
-  static double? getDouble(dynamic value){
-    double? doubleValue = double.parse(value.toString());
+  static double getDouble(dynamic value){
+    double doubleValue = double.parse(value.toString());
     return doubleValue;
   }
 

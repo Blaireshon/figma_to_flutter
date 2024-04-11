@@ -20,6 +20,7 @@ class Style{
   Border? border;
   EdgeInsets? padding;
   double? itemSpacing;
+  String? characters;
 
   Style({
     this.color,
